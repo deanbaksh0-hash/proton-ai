@@ -33,7 +33,6 @@ body{
     color:var(--text);
 }
 
-/* LOGIN SCREEN */
 #login{
     position:fixed;
     inset:0;
@@ -61,13 +60,22 @@ body{
     outline:none;
 }
 
-/* APP */
+.loginBox button{
+    width:100%;
+    padding:10px;
+    border:none;
+    border-radius:8px;
+    background:#4285f4;
+    color:white;
+    cursor:pointer;
+}
+
 #app{
     display:none;
     height:100vh;
+    display:flex;
 }
 
-/* SIDEBAR */
 .sidebar{
     width:260px;
     background:var(--sidebar);
@@ -90,14 +98,8 @@ body{
     cursor:pointer;
 }
 
-/* MAIN */
-.main{
-    flex:1;
-    display:flex;
-    flex-direction:column;
-}
+.main{flex:1;display:flex;flex-direction:column;}
 
-/* CHAT */
 .chat{
     flex:1;
     padding:20px;
@@ -125,16 +127,13 @@ body{
     border:1px solid var(--border);
 }
 
-/* typing */
 .dots{
     display:flex;
     gap:4px;
 }
 
 .dots span{
-    width:6px;
-    height:6px;
-    border-radius:50%;
+    width:6px;height:6px;border-radius:50%;
     background:var(--text);
     animation:bounce 1s infinite;
 }
@@ -147,7 +146,6 @@ body{
     50%{transform:translateY(-4px);opacity:1;}
 }
 
-/* INPUT */
 .inputbar{
     display:flex;
     gap:10px;
@@ -219,6 +217,8 @@ let current = 1;
 
 /* LOGIN */
 function login(){
+    let name = document.getElementById("name").value || "User";
+    localStorage.setItem("user",name);
     document.getElementById("login").style.display="none";
     document.getElementById("app").style.display="flex";
     newChat();
@@ -248,13 +248,12 @@ function renderTabs(){
 function renderChat(){
     let chat = document.getElementById("chat");
     chat.innerHTML = "";
-
     (chats[current]||[]).forEach(m=>{
         addMsgUI(m.text,m.type,false);
     });
 }
 
-/* MESSAGE UI */
+/* 💬 CHATGPT STYLE TYPING */
 function addMsgUI(text,type,save=true){
 
     let chat = document.getElementById("chat");
@@ -265,44 +264,63 @@ function addMsgUI(text,type,save=true){
     div.innerHTML=`<div class="dots"><span></span><span></span><span></span></div>`;
     chat.appendChild(div);
 
+    chat.scrollTop = chat.scrollHeight;
+
     setTimeout(()=>{
+
         div.textContent="";
-        let i=0,words=text.split(" ");
+
+        let words = text.split(" ");
+        let i = 0;
 
         function type(){
-            if(i<words.length){
-                div.textContent+=words[i]+" ";
+            if(i < words.length){
+                div.textContent += words[i] + " ";
                 i++;
-                chat.scrollTop=chat.scrollHeight;
-                setTimeout(type,25);
+                chat.scrollTop = chat.scrollHeight;
+                setTimeout(type,90); // smoother ChatGPT feel
             }
         }
+
         type();
-    },400);
+    },500);
 
     if(save){
         chats[current].push({text,type});
     }
-
-    chat.scrollTop=chat.scrollHeight;
 }
 
-/* 🧠 AI (FIXED + SAFE) */
+/* 🧠 AI CORE */
 async function search(q){
 
-    // calculator
+    /* 🧮 CALCULATOR + REASONING */
     if(/^[0-9+\-*/().\s^]+$/.test(q)){
-        try{
-            return "Result: " + eval(q.replace(/\^/g,"**"));
-        }catch{
-            return "Invalid math input.";
-        }
+        let cleaned = q.replace(/\^/g,"**");
+        let result = eval(cleaned);
+
+        return `
+🧮 Calculator Result
+
+Expression: ${q}
+
+Step 1: Interpret expression
+Step 2: Apply order of operations (PEMDAS)
+Step 3: Compute result
+
+Final Answer = ${result}
+
+💡 Why?
+Because multiplication/division and brackets are evaluated first, then addition/subtraction.
+
+— Proton AI
+        `;
     }
 
     if(q.toLowerCase().includes("who made")){
-        return "This was built by Dean Baksh — Proton AI is a custom  AI system built by dean baksh used to help many people across the world .";
+        return "Built by Dean Baksh — Proton AI is a web AI system combining UI, reasoning, and search APIs.";
     }
 
+    /* 🌐 DUCKDUCKGO */
     try{
         let res = await fetch(
             "https://api.duckduckgo.com/?q="+encodeURIComponent(q)+"&format=json"
@@ -310,16 +328,22 @@ async function search(q){
 
         let data = await res.json();
 
-        return data.AbstractText ||
-               data.RelatedTopics?.[0]?.Text ||
-               "No result found.";
-    }catch{
-        return "Search system offline.";
+        let answer =
+            data.AbstractText ||
+            data.RelatedTopics?.[0]?.Text;
+
+        if(answer) return answer;
+
+        return "I couldn’t find a direct answer the web.";
+    }
+    catch{
+        return "Search is offline — but I can still help using reasoning mode.";
     }
 }
 
 /* SEND */
 async function send(){
+
     let input = document.getElementById("input");
     let text = input.value;
     if(!text) return;
@@ -328,6 +352,7 @@ async function send(){
     input.value="";
 
     let reply = await search(text);
+
     addMsgUI(reply,"bot");
 }
 
