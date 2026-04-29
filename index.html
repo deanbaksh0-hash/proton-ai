@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Proton AI</title>
+
+<style>
+:root{
+    --bg:#0a0a10;
+    --sidebar:#11111a;
+    --text:white;
+    --chat:#141424;
+    --border:#222;
+    --input:#1a1a2a;
+    --accent:#b06cff;
+}
+
+body.light{
+    --bg:#f5f5f5;
+    --sidebar:#ffffff;
+    --text:#111;
+    --chat:#eaeaea;
+    --border:#ccc;
+    --input:#ffffff;
+    --accent:#6c3cff;
+}
+
+*{margin:0;padding:0;box-sizing:border-box;font-family:Arial;}
+
+body{
+    height:100vh;
+    background:var(--bg);
+    color:var(--text);
+}
+
+/* LOGIN SCREEN */
+#login{
+    position:fixed;
+    inset:0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:#000;
+}
+
+.loginBox{
+    width:320px;
+    padding:20px;
+    border-radius:12px;
+    background:#111;
+    border:1px solid #333;
+    text-align:center;
+}
+
+.loginBox input{
+    width:100%;
+    padding:10px;
+    margin:8px 0;
+    border-radius:8px;
+    border:none;
+    outline:none;
+}
+
+/* APP */
+#app{
+    display:none;
+    height:100vh;
+}
+
+/* SIDEBAR */
+.sidebar{
+    width:260px;
+    background:var(--sidebar);
+    border-right:1px solid var(--border);
+    padding:12px;
+}
+
+.logo{
+    font-size:18px;
+    font-weight:bold;
+    color:var(--accent);
+    margin-bottom:10px;
+}
+
+.chatTab{
+    padding:8px;
+    margin:5px 0;
+    background:rgba(108,60,255,0.2);
+    border-radius:8px;
+    cursor:pointer;
+}
+
+/* MAIN */
+.main{
+    flex:1;
+    display:flex;
+    flex-direction:column;
+}
+
+/* CHAT */
+.chat{
+    flex:1;
+    padding:20px;
+    overflow:auto;
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+}
+
+.msg{
+    padding:12px;
+    border-radius:14px;
+    max-width:70%;
+    white-space:pre-wrap;
+}
+
+.user{
+    align-self:flex-end;
+    background:rgba(108,60,255,0.35);
+}
+
+.bot{
+    align-self:flex-start;
+    background:var(--chat);
+    border:1px solid var(--border);
+}
+
+/* typing */
+.dots{
+    display:flex;
+    gap:4px;
+}
+
+.dots span{
+    width:6px;
+    height:6px;
+    border-radius:50%;
+    background:var(--text);
+    animation:bounce 1s infinite;
+}
+
+.dots span:nth-child(2){animation-delay:.2s;}
+.dots span:nth-child(3){animation-delay:.4s;}
+
+@keyframes bounce{
+    0%,100%{transform:translateY(0);opacity:.3;}
+    50%{transform:translateY(-4px);opacity:1;}
+}
+
+/* INPUT */
+.inputbar{
+    display:flex;
+    gap:10px;
+    padding:12px;
+    border-top:1px solid var(--border);
+    background:var(--sidebar);
+}
+
+input{
+    flex:1;
+    padding:12px;
+    border:none;
+    border-radius:10px;
+    background:var(--input);
+    color:var(--text);
+    outline:none;
+}
+
+button{
+    padding:12px;
+    border:none;
+    border-radius:10px;
+    background:rgba(108,60,255,0.4);
+    color:var(--text);
+    cursor:pointer;
+}
+</style>
+</head>
+
+<body>
+
+<!-- LOGIN -->
+<div id="login">
+  <div class="loginBox">
+    <h2>Sign in</h2>
+    <input id="name" placeholder="Email or username">
+    <input type="password" placeholder="Password">
+    <button onclick="login()">Continue</button>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+
+<div class="sidebar">
+    <div class="logo">⚡ Proton AI</div>
+    <div id="tabs"></div>
+    <button onclick="newChat()">+ New Chat</button>
+    <button onclick="toggleTheme()">Theme</button>
+</div>
+
+<div class="main">
+
+<div class="chat" id="chat"></div>
+
+<div class="inputbar">
+    <input id="input" placeholder="Ask something...">
+    <button onclick="send()">Send</button>
+</div>
+
+</div>
+
+</div>
+
+<script>
+
+let chats = {};
+let current = 1;
+
+/* LOGIN */
+function login(){
+    document.getElementById("login").style.display="none";
+    document.getElementById("app").style.display="flex";
+    newChat();
+}
+
+/* CHAT SYSTEM */
+function newChat(){
+    current = Object.keys(chats).length + 1;
+    chats[current] = [];
+    renderTabs();
+    renderChat();
+}
+
+function renderTabs(){
+    let t = document.getElementById("tabs");
+    t.innerHTML = "";
+
+    Object.keys(chats).forEach(id=>{
+        let div = document.createElement("div");
+        div.className="chatTab";
+        div.textContent="Chat "+id;
+        div.onclick=()=>{current=id;renderChat();}
+        t.appendChild(div);
+    });
+}
+
+function renderChat(){
+    let chat = document.getElementById("chat");
+    chat.innerHTML = "";
+
+    (chats[current]||[]).forEach(m=>{
+        addMsgUI(m.text,m.type,false);
+    });
+}
+
+/* MESSAGE UI */
+function addMsgUI(text,type,save=true){
+
+    let chat = document.getElementById("chat");
+
+    let div = document.createElement("div");
+    div.className="msg "+type;
+
+    div.innerHTML=`<div class="dots"><span></span><span></span><span></span></div>`;
+    chat.appendChild(div);
+
+    setTimeout(()=>{
+        div.textContent="";
+        let i=0,words=text.split(" ");
+
+        function type(){
+            if(i<words.length){
+                div.textContent+=words[i]+" ";
+                i++;
+                chat.scrollTop=chat.scrollHeight;
+                setTimeout(type,25);
+            }
+        }
+        type();
+    },400);
+
+    if(save){
+        chats[current].push({text,type});
+    }
+
+    chat.scrollTop=chat.scrollHeight;
+}
+
+/* 🧠 AI (FIXED + SAFE) */
+async function search(q){
+
+    // calculator
+    if(/^[0-9+\-*/().\s^]+$/.test(q)){
+        try{
+            return "Result: " + eval(q.replace(/\^/g,"**"));
+        }catch{
+            return "Invalid math input.";
+        }
+    }
+
+    if(q.toLowerCase().includes("who made")){
+        return "This was built by Dean Baksh — Proton AI is a custom  AI system built by dean baksh used to help many people across the world .";
+    }
+
+    try{
+        let res = await fetch(
+            "https://api.duckduckgo.com/?q="+encodeURIComponent(q)+"&format=json"
+        );
+
+        let data = await res.json();
+
+        return data.AbstractText ||
+               data.RelatedTopics?.[0]?.Text ||
+               "No result found.";
+    }catch{
+        return "Search system offline.";
+    }
+}
+
+/* SEND */
+async function send(){
+    let input = document.getElementById("input");
+    let text = input.value;
+    if(!text) return;
+
+    addMsgUI(text,"user");
+    input.value="";
+
+    let reply = await search(text);
+    addMsgUI(reply,"bot");
+}
+
+/* THEME */
+function toggleTheme(){
+    document.body.classList.toggle("light");
+}
+
+</script>
+
+</body>
+</html>
