@@ -33,6 +33,7 @@ body{
     color:var(--text);
 }
 
+/* LOGIN */
 #login{
     position:fixed;
     inset:0;
@@ -70,6 +71,7 @@ body{
     cursor:pointer;
 }
 
+/* APP */
 #app{
     display:none;
     height:100vh;
@@ -215,6 +217,31 @@ button{
 let chats = {};
 let current = 1;
 
+/* 🧠 SPELL FIXER (NEW) */
+function fixSpelling(text){
+
+    const map = {
+        "wht":"what",
+        "wat":"what",
+        "calclate":"calculate",
+        "calc":"calculate",
+        "teh":"the",
+        "seach":"search",
+        "googel":"google",
+        "recieve":"receive",
+        "adress":"address",
+        "langauge":"language",
+        "ducck":"duck",
+        "ddg":"duckduckgo"
+    };
+
+    return text
+        .toLowerCase()
+        .split(" ")
+        .map(w => map[w] || w)
+        .join(" ");
+}
+
 /* LOGIN */
 function login(){
     let name = document.getElementById("name").value || "User";
@@ -253,7 +280,7 @@ function renderChat(){
     });
 }
 
-/* 💬 CHATGPT STYLE TYPING */
+/* 💬 TYPING ANIMATION */
 function addMsgUI(text,type,save=true){
 
     let chat = document.getElementById("chat");
@@ -269,7 +296,6 @@ function addMsgUI(text,type,save=true){
     setTimeout(()=>{
 
         div.textContent="";
-
         let words = text.split(" ");
         let i = 0;
 
@@ -278,7 +304,7 @@ function addMsgUI(text,type,save=true){
                 div.textContent += words[i] + " ";
                 i++;
                 chat.scrollTop = chat.scrollHeight;
-                setTimeout(type,90); // smoother ChatGPT feel
+                setTimeout(type,90);
             }
         }
 
@@ -293,7 +319,9 @@ function addMsgUI(text,type,save=true){
 /* 🧠 AI CORE */
 async function search(q){
 
-    /* 🧮 CALCULATOR + REASONING */
+    q = fixSpelling(q); // 🔥 FIX SPELLING HERE
+
+    /* 🧮 CALCULATOR */
     if(/^[0-9+\-*/().\s^]+$/.test(q)){
         let cleaned = q.replace(/\^/g,"**");
         let result = eval(cleaned);
@@ -303,24 +331,23 @@ async function search(q){
 
 Expression: ${q}
 
-Step 1: Interpret expression
+Step 1: Understand numbers
 Step 2: Apply order of operations (PEMDAS)
-Step 3: Compute result
+Step 3: Solve
 
-Final Answer = ${result}
+Answer = ${result}
 
-💡 Why?
-Because multiplication/division and brackets are evaluated first, then addition/subtraction.
+💡 Reason:
+Multiplication/division happen before addition/subtraction.
 
 — Proton AI
         `;
     }
 
     if(q.toLowerCase().includes("who made")){
-        return "Built by Dean Baksh — Proton AI is a web AI system combining UI, reasoning, and search APIs.";
+        return "Built by Dean Baksh — Proton AI is a web AI system with reasoning + search.";
     }
 
-    /* 🌐 DUCKDUCKGO */
     try{
         let res = await fetch(
             "https://api.duckduckgo.com/?q="+encodeURIComponent(q)+"&format=json"
@@ -328,16 +355,12 @@ Because multiplication/division and brackets are evaluated first, then addition/
 
         let data = await res.json();
 
-        let answer =
-            data.AbstractText ||
-            data.RelatedTopics?.[0]?.Text;
-
-        if(answer) return answer;
-
-        return "I couldn’t find a direct answer, but I can still reason it out if you rephrase it.";
+        return data.AbstractText ||
+               data.RelatedTopics?.[0]?.Text ||
+               "No clear result found.";
     }
     catch{
-        return "Search is offline — but I can still help using reasoning mode.";
+        return "Search failed — using reasoning fallback.";
     }
 }
 
